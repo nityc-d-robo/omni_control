@@ -7,10 +7,10 @@ edition = "2021"
 
 [dependencies]
 safe_drive = "0.2"
-drobo_interfaces = { path = "/tmp/run_motor/drobo_interfaces" }
+drobo_interfaces = { path = "/tmp/2023_controller_a/drobo_interfaces" }
 
 
 [package.metadata.ros]
 msg = ["drobo_interfaces"]
-msg_dir = "/tmp/run_motor/"
+msg_dir = "/tmp/2023_controller_a/"
 safe_drive_version = "0.2"

@@ -15,7 +15,8 @@ enum Chassis {
 
 
 // const OMNI_DIA:f64 =  0.1;
-const  MAX_PAWER:f64 = 160.;
+const  MAX_PAWER_INPUT:f64 = 160.;
+const  MAX_PAWER_OUTPUT:i32 = 999;
 
 fn main() -> Result<(), DynError>{
     let ctx = Context::new()?;
@@ -23,7 +24,7 @@ fn main() -> Result<(), DynError>{
     let subscriber = node.create_subscriber::<msg::Twist>("cmd_vel", None)?;
     let publisher = node.create_publisher::<drobo_interfaces::msg::MdLibMsg>("md_driver_topic", None)?;
 
-    let logger = Logger::new("omni_controll");
+    // let _logger = Logger::new("omni_controll");
 
     let mut selector = ctx.create_selector()?;
 
@@ -48,20 +49,8 @@ fn main() -> Result<(), DynError>{
 
 fn topic_callback(msg: subscriber::TakenMsg<Twist>) -> [f64;3]{
 
-    let theta:f64 = (
-            if -msg.linear.x >0. && msg.linear.y >0. {
-
-                0.
-            }
-            else if -msg.linear.x < 0. {
-                PI
-            }
-            else {
-                2.*PI
-            }+(msg.linear.y / -msg.linear.x).atan()
-
-        ) * if -msg.linear.x == 0. { 0. } else { 1. };
     
+    let theta:f64 = msg.linear.y.atan2(-msg.linear.x);
     let pawer = (msg.linear.x.powf(2.) + msg.linear.y.powf(2.)).sqrt();
     
 
@@ -72,19 +61,29 @@ fn topic_callback(msg: subscriber::TakenMsg<Twist>) -> [f64;3]{
 fn move_chassis(_theta:f64, _pawer:f64, _yaw:f64,publisher:&Publisher<MdLibMsg>){
 
     let mut motor_power:[i32;4] = [0;4];
+    let logger = Logger::new("omni_controll");
 
-    motor_power[Chassis::FR as usize] = (_theta-(PI/4.)).sin() as i32; 
-    motor_power[Chassis::BR as usize] = (_theta-(PI* 3./4.)).sin() as i32;
-    motor_power[Chassis::BL as usize] = (_theta-(PI * 5./4.)).sin() as i32;
-    motor_power[Chassis::FL as usize] = (_theta-(PI * 7./4.)).sin() as i32;
+    
 
 
-    let max_pawer = MAX_PAWER*(PI/4.).sin();
+    motor_power[Chassis::FR as usize] = (MAX_PAWER_OUTPUT as f64 * (_pawer/MAX_PAWER_INPUT) *  (_theta-(PI * 1./4.)).sin()   )  as i32; 
+    motor_power[Chassis::FL as usize] = (MAX_PAWER_OUTPUT as f64 * (_pawer/MAX_PAWER_INPUT) *  (_theta+(PI * 5./4.)).sin()  )  as i32;
+    motor_power[Chassis::BR as usize] = (MAX_PAWER_OUTPUT as f64 * (_pawer/MAX_PAWER_INPUT) *  (_theta+(PI * 1./4.)).sin()  )  as i32;
+    motor_power[Chassis::BL as usize] = (MAX_PAWER_OUTPUT as f64 * (_pawer/MAX_PAWER_INPUT) *  (_theta+(PI * 3./4.)).sin()  )  as i32;
+
+    safe_drive::pr_info!(logger,"FL : {} FR : {} BR : {} BL : {}",
+    motor_power[Chassis::FL as usize],
+    motor_power[Chassis::FR as usize],
+    motor_power[Chassis::BR as usize],
+    motor_power[Chassis::BL as usize]);
+
+
+
     for i in 0..4 {
-        motor_power[i] *= (_pawer/max_pawer) as i32;
-
+        
         send_pwm(i as u32,0,motor_power[i]>0, motor_power[i] as u32,publisher);
     }
+    
     
 }
 
@@ -98,5 +97,4 @@ fn send_pwm(_address:u32, _semi_id:u32,_phase:bool,_power:u32,publisher:&Publish
 
     publisher.send(&msg).unwrap()
 
-    
 }
