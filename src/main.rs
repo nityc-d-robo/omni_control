@@ -20,7 +20,7 @@ const  MAX_PAWER_OUTPUT:i32 = 999;
 
 fn main() -> Result<(), DynError>{
     let ctx = Context::new()?;
-    let node = ctx.create_node("omni_controll", None, Default::default())?;
+    let node = ctx.create_node("omni_control", None, Default::default())?;
     let subscriber = node.create_subscriber::<msg::Twist>("cmd_vel", None)?;
     let publisher = node.create_publisher::<drobo_interfaces::msg::MdLibMsg>("md_driver_topic", None)?;
 
