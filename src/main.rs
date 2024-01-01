@@ -34,9 +34,10 @@ fn main() -> Result<(), DynError>{
         subscriber,
         {
             Box::new(move |msg| {
-                // pr_info!(logger, "receive: {:?}", msg.linear);
                 let topic_callback_data = topic_callback(msg);
-                // safe_drive::pr_info!(logger,"an:{},pa:{}",topic_callback_data[0],topic_callback_data[1]);
+
+                // safe_drive::pr_info!(_logger,"{}",topic_callback_data[2]);
+
                 move_chassis(topic_callback_data[0],topic_callback_data[1],topic_callback_data[2],&publisher);
             })
         },
@@ -60,14 +61,13 @@ fn topic_callback(msg: subscriber::TakenMsg<Twist>) -> [f64;3]{
     
 }
 
-fn move_chassis(_theta:f64, _pawer:f64, _yaw:f64,publisher:&Publisher<MdLibMsg>){
+fn move_chassis(_theta:f64, _pawer:f64, _revolution:f64,publisher:&Publisher<MdLibMsg>){
 
     // for debug
     let _logger = Logger::new("omni_controll");
 
 
     let mut motor_power:[f64;4] = [0.;4];
-    
 
     motor_power[Chassis::FR as usize] = (_theta-(PI * 1./4.)).sin(); 
     motor_power[Chassis::FL as usize] = (_theta+(PI * 5./4.)).sin();
@@ -86,18 +86,24 @@ fn move_chassis(_theta:f64, _pawer:f64, _yaw:f64,publisher:&Publisher<MdLibMsg>)
 
     for i in 0..motor_power.len() {
 
-        motor_power[i] = MAX_PAWER_OUTPUT * (_pawer/MAX_PAWER_INPUT) * motor_power[i]/standard_power;
+        motor_power[i] = MAX_PAWER_OUTPUT * (_pawer/MAX_PAWER_INPUT) * motor_power[i]/standard_power 
+                                                    + MAX_PAWER_OUTPUT*(_revolution/MAX_PAWER_INPUT);
+
+        // 
+        motor_power[i] = motor_power[i].max(-MAX_PAWER_OUTPUT);
+        motor_power[i] = motor_power[i].min(MAX_PAWER_OUTPUT);
+
         send_pwm(i as u32,0,motor_power[i]>0., motor_power[i] as u32,publisher);
     }
 
     // safe_drive::pr_info!(_logger,"FL : {} FR : {} BR : {} BL : {} PA : {} ø : {}",
-    // motor_power[Chassis::FL as usize],
-    // motor_power[Chassis::FR as usize],
-    // motor_power[Chassis::BR as usize],
-    // motor_power[Chassis::BL as usize],
-    // _pawer,
-    // _theta/PI*180.
-// );
+    //     motor_power[Chassis::FL as usize],
+    //     motor_power[Chassis::FR as usize],
+    //     motor_power[Chassis::BR as usize],
+    //     motor_power[Chassis::BL as usize],
+    //     _pawer,
+    //     _theta/PI*180.
+    // );
 }
 
 fn send_pwm(_address:u32, _semi_id:u32,_phase:bool,_power:u32,publisher:&Publisher<MdLibMsg>){
