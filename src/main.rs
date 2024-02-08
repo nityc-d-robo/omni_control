@@ -115,14 +115,14 @@ fn move_chassis(_theta:f64, _pawer:f64, _yaw:f64,publisher:&Publisher<MdLibMsg>)
         send_pwm(i as u32,0,motor_power[i]>0., motor_power[i] as u32,publisher);
     }
 
-    // safe_drive::pr_info!(_logger,"fl : {} fr : {} br : {} bl : {} PA : {} ø : {}",
-    // motor_power[Chassis::fl as usize],
-    // motor_power[Chassis::fr as usize],
-    // motor_power[Chassis::br as usize],
-    // motor_power[Chassis::bl as usize],
-    // _pawer,
-    // _theta/PI*180.
-// );
+    safe_drive::pr_info!(_logger,"fl : {} fr : {} br : {} bl : {} PA : {} ø : {}",
+    motor_power[CHASSIS.fr.id],
+    motor_power[CHASSIS.fl.id],
+    motor_power[CHASSIS.br.id],
+    motor_power[CHASSIS.bl.id],
+    _pawer,
+    _theta/PI*180.
+);
 }
 
 fn send_pwm(_address:u32, _semi_id:u32,_phase:bool,_power:u32,publisher:&Publisher<MdLibMsg>){
