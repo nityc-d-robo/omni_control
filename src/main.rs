@@ -7,12 +7,36 @@ use drobo_interfaces::msg::MdLibMsg;
 use std::f64::consts::PI;
 
 
-enum Chassis {
-    FL = 0,
-    FR = 1,
-    BR = 2, 
-    BL = 3,
+struct Tire{
+    id:usize,
+    raito:f64
 }
+
+struct  Chassis {
+    fl:Tire,
+    fr:Tire,
+    br:Tire, 
+    bl:Tire,
+}
+
+const CHASSIS:Chassis = Chassis{
+    fl:Tire{
+        id:0,
+        raito:1.
+    },
+    fr:Tire{
+        id:1,
+        raito:1.
+    },
+    br:Tire{
+        id:2,
+        raito:1.
+    },
+    bl:Tire{
+        id:3,
+        raito:1.
+    }
+};
 
 
 
@@ -70,40 +94,44 @@ fn move_chassis(_theta:f64, _pawer:f64, _yaw:f64,publisher:&Publisher<MdLibMsg>)
     let mut motor_power:[f64;4] = [0.;4];
     
 
+    motor_power[CHASSIS.fr.id] = (_theta-(PI * 1./4.)).sin() * CHASSIS.fr.raito; 
+    motor_power[CHASSIS.fl.id] = (_theta+(PI * 5./4.)).sin() * CHASSIS.fl.raito;
+    motor_power[CHASSIS.br.id] = (_theta+(PI * 1./4.)).sin() * CHASSIS.br.raito;
+    motor_power[CHASSIS.bl.id] = (_theta+(PI * 3./4.)).sin() * CHASSIS.bl.raito;
 
-    motor_power[Chassis::FR as usize] = (_theta-(PI * 1./4.)).sin(); 
-    motor_power[Chassis::FL as usize] = (_theta+(PI * 5./4.)).sin();
-    motor_power[Chassis::BR as usize] = (_theta+(PI * 1./4.)).sin();
-    motor_power[Chassis::BL as usize] = (_theta+(PI * 3./4.)).sin();
 
 
-    
+    let standard_power:f64 = {
+            [
+                motor_power.iter().fold(0.0/0.0, |m, v| v.max(m)).abs(),
+                motor_power.iter().fold(0.0/0.0, |m, v| v.min(m)).abs()
+
+            ].iter().fold(0.0/0.0, |m, v| v.max(m)) 
+        };
+
     for i in 0..motor_power.len() {
 
-        motor_power[i] = motor_power[i]*(MAX_PAWER_OUTPUT * (_pawer/MAX_PAWER_INPUT));
-        send_pwm(i as u8, 0, motor_power[i] > 0., motor_power[i].abs() as u16, publisher)
+        motor_power[i] = MAX_PAWER_OUTPUT * (_pawer/MAX_PAWER_INPUT) * motor_power[i]/standard_power;
+        send_pwm(i as u32,0,motor_power[i]>0., motor_power[i].abs() as u32,publisher);
     }
-    
-
 
     safe_drive::pr_info!(_logger,"fl : {} fr : {} br : {} bl : {} PA : {} ø : {}",
-        motor_power[Chassis::FR as usize] as u32,
-        motor_power[Chassis::FL as usize] as u32,
-        motor_power[Chassis::BR as usize] as u32,
-        motor_power[Chassis::BL as usize] as u32,
-        _pawer,
-        _theta/PI*180.
-    );
-
+    motor_power[CHASSIS.fr.id],
+    motor_power[CHASSIS.fl.id],
+    motor_power[CHASSIS.br.id],
+    motor_power[CHASSIS.bl.id],
+    _pawer,
+    _theta/PI*180.
+);
 }
 
-fn send_pwm(_address: u8, _semi_id: u8,_phase:bool,_power:u16,publisher:&Publisher<MdLibMsg>){
+fn send_pwm(_address:u32, _semi_id:u32,_phase:bool,_power:u32,publisher:&Publisher<MdLibMsg>){
     let mut msg = drobo_interfaces::msg::MdLibMsg::new().unwrap();
-    msg.address = _address;
-    msg.semi_id = _semi_id;
+    msg.address = _address as u8;
+    msg.semi_id = _semi_id as u8;
     msg.mode = 2 as u8; //MotorLibのPWMモードに倣いました
-    msg.phase = _phase;
-    msg.power = _power;
+    msg.phase = _phase as bool;
+    msg.power = _power as u16;
 
     publisher.send(&msg).unwrap()
 
