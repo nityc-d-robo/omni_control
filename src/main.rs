@@ -6,12 +6,38 @@ use safe_drive::msg::common_interfaces::geometry_msgs::msg;
 use drobo_interfaces::msg::MdLibMsg;
 use std::f64::consts::PI;
 
-enum Chassis {
-    FL = 0,
-    FR = 1,
-    BR = 2, 
-    BL = 3,
+
+struct Tire{
+    id:usize,
+    raito:f64
 }
+
+struct  Chassis {
+    fl:Tire,
+    fr:Tire,
+    br:Tire, 
+    bl:Tire,
+}
+
+const CHASSIS:Chassis = Chassis{
+    fl:Tire{
+        id:0,
+        raito:1.
+    },
+    fr:Tire{
+        id:1,
+        raito:1.
+    },
+    br:Tire{
+        id:2,
+        raito:1.
+    },
+    bl:Tire{
+        id:3,
+        raito:1.
+    }
+};
+
 
 
 // const OMNI_DIA:f64 =  0.1;
@@ -34,10 +60,9 @@ fn main() -> Result<(), DynError>{
         subscriber,
         {
             Box::new(move |msg| {
+                // pr_info!(logger, "receive: {:?}", msg.linear);
                 let topic_callback_data = topic_callback(msg);
-
-                // safe_drive::pr_info!(_logger,"{}",topic_callback_data[2]);
-
+                // safe_drive::pr_info!(logger,"an:{},pa:{}",topic_callback_data[0],topic_callback_data[1]);
                 move_chassis(topic_callback_data[0],topic_callback_data[1],topic_callback_data[2],&publisher);
             })
         },
@@ -58,7 +83,6 @@ fn topic_callback(msg: subscriber::TakenMsg<Twist>) -> [f64;3]{
     
 
     [theta,pawer,msg.angular.z]
-    
 }
 
 fn move_chassis(_theta:f64, _pawer:f64, _revolution:f64,publisher:&Publisher<MdLibMsg>){
@@ -69,10 +93,11 @@ fn move_chassis(_theta:f64, _pawer:f64, _revolution:f64,publisher:&Publisher<MdL
 
     let mut motor_power:[f64;4] = [0.;4];
 
-    motor_power[Chassis::FR as usize] = (_theta-(PI * 1./4.)).sin(); 
-    motor_power[Chassis::FL as usize] = (_theta+(PI * 5./4.)).sin();
-    motor_power[Chassis::BR as usize] = (_theta+(PI * 1./4.)).sin();
-    motor_power[Chassis::BL as usize] = (_theta+(PI * 3./4.)).sin();
+
+    motor_power[CHASSIS.fr.id] = (_theta-(PI * 1./4.)).sin() * CHASSIS.fr.raito; 
+    motor_power[CHASSIS.fl.id] = (_theta+(PI * 5./4.)).sin() * CHASSIS.fl.raito;
+    motor_power[CHASSIS.br.id] = (_theta+(PI * 1./4.)).sin() * CHASSIS.br.raito;
+    motor_power[CHASSIS.bl.id] = (_theta+(PI * 3./4.)).sin() * CHASSIS.bl.raito;
 
 
 
@@ -86,24 +111,23 @@ fn move_chassis(_theta:f64, _pawer:f64, _revolution:f64,publisher:&Publisher<MdL
 
     for i in 0..motor_power.len() {
 
-        motor_power[i] = MAX_PAWER_OUTPUT * (_pawer/MAX_PAWER_INPUT) * motor_power[i]/standard_power 
-                                                    + MAX_PAWER_OUTPUT*(_revolution/MAX_PAWER_INPUT);
+        motor_power[i] = MAX_PAWER_OUTPUT * (_pawer/MAX_PAWER_INPUT) * motor_power[i]/standard_power
+                        + MAX_PAWER_OUTPUT*(_revolution/MAX_PAWER_INPUT);
 
-        // 
         motor_power[i] = motor_power[i].max(-MAX_PAWER_OUTPUT);
         motor_power[i] = motor_power[i].min(MAX_PAWER_OUTPUT);
-
-        send_pwm(i as u32,0,motor_power[i]>0., motor_power[i] as u32,publisher);
+        
+        send_pwm(i as u32,0,motor_power[i]>0., motor_power[i].abs() as u32,publisher);
     }
 
-    // safe_drive::pr_info!(_logger,"FL : {} FR : {} BR : {} BL : {} PA : {} ø : {}",
-    //     motor_power[Chassis::FL as usize],
-    //     motor_power[Chassis::FR as usize],
-    //     motor_power[Chassis::BR as usize],
-    //     motor_power[Chassis::BL as usize],
-    //     _pawer,
-    //     _theta/PI*180.
-    // );
+    safe_drive::pr_info!(_logger,"fl : {} fr : {} br : {} bl : {} PA : {} ø : {}",
+    motor_power[CHASSIS.fr.id],
+    motor_power[CHASSIS.fl.id],
+    motor_power[CHASSIS.br.id],
+    motor_power[CHASSIS.bl.id],
+    _pawer,
+    _theta/PI*180.
+);
 }
 
 fn send_pwm(_address:u32, _semi_id:u32,_phase:bool,_power:u32,publisher:&Publisher<MdLibMsg>){
