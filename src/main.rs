@@ -81,26 +81,29 @@ fn move_chassis(_theta:f64, _pawer:f64, _yaw:f64,publisher:&Publisher<MdLibMsg>)
     for i in 0..motor_power.len() {
 
         motor_power[i] = motor_power[i]*(MAX_PAWER_OUTPUT * (_pawer/MAX_PAWER_INPUT));
-        send_pwm(i as u32,0,motor_power[i]>0., motor_power[i] as u32,publisher);
+        send_pwm(i as u8, 0, motor_power[i] > 0., motor_power[i].abs() as u16, publisher)
     }
+    
 
-    // safe_drive::pr_info!(_logger,"fl : {} fr : {} br : {} bl : {} PA : {} ø : {}",
-    // motor_power[Chassis::FR as usize],
-    // motor_power[Chassis::FL as usize],
-    // motor_power[Chassis::BR as usize],
-    // motor_power[Chassis::BL as usize],
-    // _pawer,
-    // _theta/PI*180.
-// );
+
+    safe_drive::pr_info!(_logger,"fl : {} fr : {} br : {} bl : {} PA : {} ø : {}",
+        motor_power[Chassis::FR as usize] as u32,
+        motor_power[Chassis::FL as usize] as u32,
+        motor_power[Chassis::BR as usize] as u32,
+        motor_power[Chassis::BL as usize] as u32,
+        _pawer,
+        _theta/PI*180.
+    );
+
 }
 
-fn send_pwm(_address:u32, _semi_id:u32,_phase:bool,_power:u32,publisher:&Publisher<MdLibMsg>){
+fn send_pwm(_address: u8, _semi_id: u8,_phase:bool,_power:u16,publisher:&Publisher<MdLibMsg>){
     let mut msg = drobo_interfaces::msg::MdLibMsg::new().unwrap();
-    msg.address = _address as u8;
-    msg.semi_id = _semi_id as u8;
+    msg.address = _address;
+    msg.semi_id = _semi_id;
     msg.mode = 2 as u8; //MotorLibのPWMモードに倣いました
-    msg.phase = _phase as bool;
-    msg.power = _power as u16;
+    msg.phase = _phase;
+    msg.power = _power;
 
     publisher.send(&msg).unwrap()
 
