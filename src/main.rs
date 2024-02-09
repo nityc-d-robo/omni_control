@@ -85,14 +85,14 @@ fn topic_callback(msg: subscriber::TakenMsg<Twist>) -> [f64;3]{
     [theta,pawer,msg.angular.z]
 }
 
-fn move_chassis(_theta:f64, _pawer:f64, _yaw:f64,publisher:&Publisher<MdLibMsg>){
+fn move_chassis(_theta:f64, _pawer:f64, _revolution:f64,publisher:&Publisher<MdLibMsg>){
 
     // for debug
     let _logger = Logger::new("omni_controll");
 
 
     let mut motor_power:[f64;4] = [0.;4];
-    
+
 
     motor_power[CHASSIS.fr.id] = (_theta-(PI * 1./4.)).sin() * CHASSIS.fr.raito; 
     motor_power[CHASSIS.fl.id] = (_theta+(PI * 5./4.)).sin() * CHASSIS.fl.raito;
@@ -111,7 +111,12 @@ fn move_chassis(_theta:f64, _pawer:f64, _yaw:f64,publisher:&Publisher<MdLibMsg>)
 
     for i in 0..motor_power.len() {
 
-        motor_power[i] = MAX_PAWER_OUTPUT * (_pawer/MAX_PAWER_INPUT) * motor_power[i]/standard_power;
+        motor_power[i] = MAX_PAWER_OUTPUT * (_pawer/MAX_PAWER_INPUT) * motor_power[i]/standard_power
+                        + MAX_PAWER_OUTPUT*(_revolution/MAX_PAWER_INPUT);
+
+        motor_power[i] = motor_power[i].max(-MAX_PAWER_OUTPUT);
+        motor_power[i] = motor_power[i].min(MAX_PAWER_OUTPUT);
+        
         send_pwm(i as u32,0,motor_power[i]>0., motor_power[i].abs() as u32,publisher);
     }
 
