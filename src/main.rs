@@ -43,6 +43,7 @@ const CHASSIS:Chassis = Chassis{
 // const OMNI_DIA:f64 =  0.1;
 const  MAX_PAWER_INPUT:f64 = 160.;
 const  MAX_PAWER_OUTPUT:f64 = 999.;
+const  MAX_REVOLUTION:f64 = 5400.;
 
 fn main() -> Result<(), DynError>{
 
@@ -67,6 +68,7 @@ fn main() -> Result<(), DynError>{
             })
         },
     );
+
 
     loop {
         selector.wait()?;
@@ -112,7 +114,7 @@ fn move_chassis(_theta:f64, _pawer:f64, _revolution:f64,publisher:&Publisher<MdL
     for i in 0..motor_power.len() {
 
         motor_power[i] = MAX_PAWER_OUTPUT * (_pawer/MAX_PAWER_INPUT) * motor_power[i]/standard_power
-                        + MAX_PAWER_OUTPUT*(_revolution/MAX_PAWER_INPUT);
+                        + MAX_PAWER_OUTPUT*(_revolution/MAX_REVOLUTION);
 
         motor_power[i] = motor_power[i].max(-MAX_PAWER_OUTPUT);
         motor_power[i] = motor_power[i].min(MAX_PAWER_OUTPUT);
@@ -120,14 +122,15 @@ fn move_chassis(_theta:f64, _pawer:f64, _revolution:f64,publisher:&Publisher<MdL
         send_pwm(i as u32,0,motor_power[i]>0., motor_power[i].abs() as u32,publisher);
     }
 
+    
     safe_drive::pr_info!(_logger,"fl : {} fr : {} br : {} bl : {} PA : {} ø : {}",
-    motor_power[CHASSIS.fr.id],
-    motor_power[CHASSIS.fl.id],
-    motor_power[CHASSIS.br.id],
-    motor_power[CHASSIS.bl.id],
-    _pawer,
-    _theta/PI*180.
-);
+        motor_power[CHASSIS.fr.id],
+        motor_power[CHASSIS.fl.id],
+        motor_power[CHASSIS.br.id],
+        motor_power[CHASSIS.bl.id],
+        _pawer,
+        _theta/PI*180.
+    );
 }
 
 fn send_pwm(_address:u32, _semi_id:u32,_phase:bool,_power:u32,publisher:&Publisher<MdLibMsg>){
