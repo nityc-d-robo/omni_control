@@ -7,10 +7,14 @@ edition = "2021"
 
 [dependencies]
 safe_drive = "0.2"
-drobo_interfaces = { path = "/tmp/2023_controller_a/drobo_interfaces" }
+
+#please change omni_control_sample to your work space name
+drobo_interfaces = { path = "/tmp/omni_control_sample/drobo_interfaces" }
 
 
 [package.metadata.ros]
 msg = ["drobo_interfaces"]
-msg_dir = "/tmp/2023_controller_a/"
+
+#please change omni_control_sample to your work space name 
+msg_dir = "/tmp/omni_control_sample/"
 safe_drive_version = "0.2"

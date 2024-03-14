@@ -1,0 +1,54 @@
+name: build and test
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+  workflow_dispatch:
+  schedule:
+    - cron: '0 0 * * *'
+  release:
+    types: [published]
+
+jobs:
+  build_and_test:
+    strategy:
+      matrix:
+        os:
+          - ubuntu-22.04
+        rosdistro:
+          - humble
+
+    runs-on: ubuntu-latest
+
+    container:
+      image: ros:${{ matrix.rosdistro }}-ros-base
+
+    steps:
+      - name: Install dependencies
+        run: |
+          rosdep update && 
+          apt-get update && 
+          apt-get install -y git &&
+          rosdep install --from-path . -i -y --rosdistro ${{ matrix.rosdistro }}
+
+      - name: Install diagnostic-updater
+        run: apt-get install ros-${{ matrix.rosdistro }}-diagnostic-updater
+
+      - name: Setup directories and clone drobo_interfaces
+        run:  mkdir -p ~/omni_control_sample/src &&
+              cd ~/omni_control_sample/src &&
+              git clone https://github.com/nityc-d-robo/drobo_interfaces.git
+              
+      - name: Check out repository
+        uses: actions/checkout@v3
+        with:
+          path: ~/omni_control_sample/src/omni_control
+
+
+
+      - name: Build tests
+        run: |
+          . /opt/ros/${{ matrix.rosdistro }}/setup.sh && 
+          colcon build
