@@ -28,7 +28,7 @@ impl OmniSetting {
         [theta, power]
     }
 
-    pub fn move_chassis(self, linear_x: f64, linear_y: f64, angular_z: f64) -> HashMap<usize, f64> {
+    pub fn move_chassis(&self, linear_x: f64, linear_y: f64, angular_z: f64) -> HashMap<usize, f64> {
         let _revolution = angular_z;
         let [_theta, _pawer] = &self.first_step(linear_x, linear_y);
 
