@@ -137,7 +137,7 @@ fn send_pwm(
     msg.semi_id = _semi_id as u8;
     msg.mode = 2 as u8; //MotorLibのPWMモードに倣いました
     msg.phase = _phase as bool;
-    msg.power = _power as u16;
+    msg.power = _power as i16;
 
     publisher.send(&msg).unwrap()
 }
