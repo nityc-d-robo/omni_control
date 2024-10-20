@@ -20,7 +20,7 @@ pub struct OmniSetting {
 
 impl OmniSetting {
     fn first_step(&self, linear_x: f64, linear_y: f64) -> [f64; 2] {
-        let theta: f64 = linear_y.atan2(-linear_x);
+        let theta: f64 = linear_y.atan2(linear_x);
         let power: f64 = (linear_x.powf(2.) + linear_y.powf(2.))
             .sqrt()
             .min(self.max_power_input);
@@ -95,15 +95,17 @@ fn test() {
         max_revolution: MAX_REVOLUTION,
     };
 
-    let motor_power = omni_setting.move_chassis(-1., 0., 0.);
+    let motor_power = omni_setting.move_chassis(0., 0., 0.);
 
     let y = motor_power[&1] * (PI * 1. / 6.).sin() - motor_power[&0] * (PI * 5. / 6.).sin();
     let x = motor_power[&1] * (PI * 1. / 6.).cos() - motor_power[&0] * (PI * 5. / 6.).cos()
         + motor_power[&2] * (PI * 9. / 6.).cos();
 
     println!("{:?}", (x, y));
+    let mut keys = motor_power.keys().cloned().collect::<Vec<usize>>();
+    keys.sort();
 
-    for i in motor_power {
-        println!("{:?}", i)
+    for key in keys {
+        println!("id: {},value: {}", key, motor_power[&key])
     }
 }
