@@ -9,12 +9,14 @@ edition = "2021"
 safe_drive = "0.4"
 
 #please change omni_control_sample to your work space name
-drobo_interfaces = { path = "/tmp/2024_robot1_workspace/drobo_interfaces" }
+drobo_interfaces = { path = "/tmp/ws_2024/drobo_interfaces" }
+ndarray = "0.16.1"
+
 
 
 [package.metadata.ros]
 msg = ["drobo_interfaces"]
 
 #please change omni_control_sample to your work space name 
-msg_dir = "/tmp/2024_robot1_workspace/"
+msg_dir = "/tmp/ws_2024/"
 safe_drive_version = "0.4"
