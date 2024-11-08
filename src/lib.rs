@@ -1,8 +1,10 @@
 use ndarray::prelude::{arr1, arr2};
 use std::collections::HashMap;
+const MIN:f64 = 60.;
+
 pub struct Tire {
     pub id: usize,
-    pub raito: f64,
+    pub radius: f64,// m
 }
 
 pub struct Chassis {
@@ -13,18 +15,12 @@ pub struct Chassis {
 
 pub struct OmniSetting {
     pub chassis: Chassis,
-    pub max_power_input: f64,
-    pub max_power_output: f64,
-    pub radius: f64,
+    pub radius: f64, // m
 }
 
 impl OmniSetting {
-    fn first_step(&self, linear_x: f64, linear_y: f64) -> f64 {
-        let power: f64 = (linear_x.powf(2.) + linear_y.powf(2.))
-            .sqrt()
-            .min(self.max_power_input);
-
-        power
+    fn ms_rpm(&self,radius:f64,ms:f64) -> f64 {
+        (ms/radius)*MIN
     }
 
     pub fn move_chassis(
@@ -35,69 +31,39 @@ impl OmniSetting {
     ) -> HashMap<usize, f64> {
         // 回転成分はあと
         let control_matrixn = arr2(&[
-            [1., 0.],
-            [-1. / 2., 3_f64.sqrt() / 2.],
-            [-1. / 2., -1. * 3_f64.sqrt() / 2.],
+            [1., 0.,self.radius],
+            [-1. / 2., 3_f64.sqrt() / 2.,self.radius],
+            [-1. / 2., -1. * 3_f64.sqrt() / 2.,self.radius],
         ]);
 
-        let vx_vy = arr1(&[linear_x, linear_y]);
-        let v1_v2_v3 = control_matrixn.dot(&vx_vy);
+        let vx_vy_az = arr1(&[linear_x, linear_y,angular_z]);
+
+        // m/s
+        let v1_v2_v3 = control_matrixn.dot(&vx_vy_az);
 
         let mut motor_power = HashMap::new();
-        motor_power.insert(self.chassis.f.id, v1_v2_v3[[0]] * self.chassis.f.raito);
-        motor_power.insert(self.chassis.bl.id, v1_v2_v3[[1]] * self.chassis.bl.raito);
-        motor_power.insert(self.chassis.br.id, v1_v2_v3[[2]] * self.chassis.br.raito);
+        motor_power.insert(self.chassis.f.id, self.ms_rpm(self.chassis.f.radius, v1_v2_v3[[0]]));
+        motor_power.insert(self.chassis.bl.id, self.ms_rpm(self.chassis.bl.radius, v1_v2_v3[[1]]));
+        motor_power.insert(self.chassis.br.id, self.ms_rpm(self.chassis.f.radius, v1_v2_v3[[2]]));
+
+        motor_power
 
         // Ratio adjustment
-        {
-            let _power = self.first_step(linear_x, linear_y);
-
-            let standard_power: f64 = {
-                [
-                    motor_power.values().fold(0.0 / 0.0, |m, v| v.max(m)).abs(),
-                    motor_power.values().fold(0.0 / 0.0, |m, v| v.min(m)).abs(),
-                ]
-                .iter()
-                .fold(0.0 / 0.0, |m, v| v.max(m))
-            };
-
-            let mut re_motor_power = HashMap::new();
-            for i in motor_power.keys() {
-                let mut _tmp = 0.;
-
-                _tmp = if standard_power != 0. {
-                    self.max_power_output * (_power / self.max_power_input) * motor_power[i]
-                        / standard_power
-                } else {
-                    0.
-                } + self.radius * angular_z;
-
-                _tmp = _tmp.max(-self.max_power_output);
-                _tmp = _tmp.min(self.max_power_output);
-
-                re_motor_power.insert(*i, _tmp);
-            }
-            re_motor_power
-        }
     }
 }
 
 #[test]
 fn test() {
-    const MAX_PAWER_INPUT: f64 = 160.;
-    const MAX_PAWER_OUTPUT: f64 = 999.;
     const CHASSIS: Chassis = Chassis {
-        bl: Tire { id: 0, raito: 1. },
-        br: Tire { id: 1, raito: 1. },
-        f: Tire { id: 2, raito: 1. },
+        bl: Tire { id: 0, radius: 0.1 },
+        br: Tire { id: 1, radius: 0.1 },
+        f: Tire { id: 2, radius:  0.1 },
     };
 
     let omni_setting = OmniSetting {
         chassis: CHASSIS,
-        max_power_input: MAX_PAWER_INPUT,
-        max_power_output: MAX_PAWER_OUTPUT,
         radius: 0.5,
     };
 
-    println!("{:?}", omni_setting.move_chassis(0., 0., 5400.))
+    println!("{:?}", omni_setting.move_chassis(1., 0., 0.))
 }
