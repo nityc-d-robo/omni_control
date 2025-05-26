@@ -1,15 +1,13 @@
 <?xml version="1.0"?>
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
-  <name>omni_control</name>
-  <version>0.0.0</version>
-  <description>Motor System in Rust</description>
-  <maintainer email="kiruruman@gmail.com">Daniel Ezomo</maintainer>
-  <license>Apache License 2.0</license>
+  <name>omni_main</name>
+  <version>0.1.0</version>
+  <description>launch to robot_2(2024_winter)</description>
+  <maintainer email="yukitoharuto@outlook.jp">mituba3328</maintainer>
+  <license>TODO: License declaration</license>
 
-  <depend>std_msgs</depend>
-  <depend>drobo_interfaces</depend>
-
+  <buildtool_depend>ament_cargo</buildtool_depend>
 
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>ament_lint_common</test_depend>
