@@ -1,0 +1,20 @@
+[package]
+name = "omni_control"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+safe_drive = "0.4"
+
+#please change omni_control_sample to your work space name
+drobo_interfaces = { path = "/tmp/2024_robot1_workspace/drobo_interfaces" }
+
+
+[package.metadata.ros]
+msg = ["drobo_interfaces"]
+
+#please change omni_control_sample to your work space name 
+msg_dir = "/tmp/2024_robot1_workspace/"
+safe_drive_version = "0.4"
