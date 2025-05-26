@@ -1,4 +1,3 @@
-#[allow(unused_imports)]
 use safe_drive::{
     context::Context,
     error::DynError,
@@ -7,64 +6,59 @@ use safe_drive::{
     topic::{publisher::Publisher, subscriber},
 };
 
-use motor_lib::{
-    USBHandle,
-    Error,
-    md,
-    GrpcHandle
-};
-
+use drobo_interfaces::msg::MdLibMsg;
 use safe_drive::msg::common_interfaces::geometry_msgs::msg;
-use safe_drive::pr_info;
 use std::f64::consts::PI;
-use std::{cell::RefCell, rc::Rc};
 
-// 構造体の宣言
 struct Tire {
     id: usize,
     raito: f64,
 }
-// 4輪
+
 struct Chassis {
     fl: Tire,
     fr: Tire,
     br: Tire,
     bl: Tire,
 }
-// 構造体を作成
+
 const CHASSIS: Chassis = Chassis {
-    fl: Tire { id: 1, raito: 1. },
-    fr: Tire { id: 0, raito: 1. },
-    br: Tire { id: 3, raito: 1. },
-    bl: Tire { id: 2, raito: 1. },
+    fl: Tire { id: 0, raito: 1. },
+    fr: Tire { id: 1, raito: 1. },
+    br: Tire { id: 2, raito: 1. },
+    bl: Tire { id: 3, raito: 1. },
 };
 
-// 定数の宣言
+// const OMNI_DIA:f64 =  0.1;
 const MAX_PAWER_INPUT: f64 = 160.;
 const MAX_PAWER_OUTPUT: f64 = 999.;
 const MAX_REVOLUTION: f64 = 5400.;
 
 fn main() -> Result<(), DynError> {
-    let handle = GrpcHandle::new("http://127.0.0.1:50051");
-
-    let _logger = Logger::new("robot_2");
+    // for debug
+    let _logger = Logger::new("omni_controll");
 
     let ctx = Context::new()?;
-    let node = ctx.create_node("robot_2", None, Default::default())?;
+    let node = ctx.create_node("omni_control", None, Default::default())?;
     let subscriber = node.create_subscriber::<msg::Twist>("cmd_vel", None)?;
+    let publisher =
+        node.create_publisher::<drobo_interfaces::msg::MdLibMsg>("md_driver_topic", None)?;
     let mut selector = ctx.create_selector()?;
 
     selector.add_subscriber(subscriber, {
         Box::new(move |msg| {
+            // pr_info!(logger, "receive: {:?}", msg.linear);
             let topic_callback_data = topic_callback(msg);
+            // safe_drive::pr_info!(logger,"an:{},pa:{}",topic_callback_data[0],topic_callback_data[1]);
             move_chassis(
                 topic_callback_data[0],
                 topic_callback_data[1],
                 topic_callback_data[2],
-                &handle,
+                &publisher,
             );
         })
     });
+
     loop {
         selector.wait()?;
     }
@@ -72,6 +66,7 @@ fn main() -> Result<(), DynError> {
 
 fn topic_callback(msg: subscriber::TakenMsg<Twist>) -> [f64; 3] {
     // for debug
+    let _logger = Logger::new("omni_controll");
 
     let theta: f64 = msg.linear.y.atan2(-msg.linear.x);
     let pawer: f64 = (msg.linear.x.powf(2.) + msg.linear.y.powf(2.))
@@ -81,11 +76,12 @@ fn topic_callback(msg: subscriber::TakenMsg<Twist>) -> [f64; 3] {
     [theta, pawer, msg.angular.z]
 }
 
-fn move_chassis(_theta: f64, _pawer: f64, _revolution: f64, handle: &GrpcHandle) {
+fn move_chassis(_theta: f64, _pawer: f64, _revolution: f64, publisher: &Publisher<MdLibMsg>) {
     // for debug
-    let _logger = Logger::new("robot_2");
+    let _logger = Logger::new("omni_controll");
 
     let mut motor_power: [f64; 4] = [0.; 4];
+
     motor_power[CHASSIS.fr.id] = (_theta - (PI * 1. / 4.)).sin() * CHASSIS.fr.raito;
     motor_power[CHASSIS.fl.id] = (_theta + (PI * 5. / 4.)).sin() * CHASSIS.fl.raito;
     motor_power[CHASSIS.br.id] = (_theta + (PI * 1. / 4.)).sin() * CHASSIS.br.raito;
@@ -108,12 +104,16 @@ fn move_chassis(_theta: f64, _pawer: f64, _revolution: f64, handle: &GrpcHandle)
         motor_power[i] = motor_power[i].max(-MAX_PAWER_OUTPUT);
         motor_power[i] = motor_power[i].min(MAX_PAWER_OUTPUT);
 
-        // pr_info!(_logger, "here!");
-        md::send_pwm(handle, i as u8, motor_power[i] as i16);
-        // md::send_speed(handle, i as u8, motor_power[i] as i16);
+        send_pwm(
+            i as u32,
+            0,
+            motor_power[i] > 0.,
+            motor_power[i].abs() as u32,
+            publisher,
+        );
     }
 
-    pr_info!(
+    safe_drive::pr_info!(
         _logger,
         "fl : {} fr : {} br : {} bl : {} PA : {} ø : {}",
         motor_power[CHASSIS.fr.id],
@@ -123,4 +123,21 @@ fn move_chassis(_theta: f64, _pawer: f64, _revolution: f64, handle: &GrpcHandle)
         _pawer,
         _theta / PI * 180.
     );
+}
+
+fn send_pwm(
+    _address: u32,
+    _semi_id: u32,
+    _phase: bool,
+    _power: u32,
+    publisher: &Publisher<MdLibMsg>,
+) {
+    let mut msg = drobo_interfaces::msg::MdLibMsg::new().unwrap();
+    msg.address = _address as u8;
+    msg.semi_id = _semi_id as u8;
+    msg.mode = 2 as u8; //MotorLibのPWMモードに倣いました
+    msg.phase = _phase as bool;
+    msg.power = _power as i16;
+
+    publisher.send(&msg).unwrap()
 }
